@@ -235,30 +235,37 @@ private:
   {
     if (connectWiFi())
     {
-      int gmtOffset = 3600;      // +1hr.
-      int daylightOffset = 3600; // Observe daylight savings.
+      bool syncFailed = false;
 
-      configTime(gmtOffset, daylightOffset, "pool.ntp.org");
+      configTime(0, 0, "pool.ntp.org");
+      setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
 
       int i = 0;
-      while (time(nullptr) < 1000000000l && i < 40)
+      while (!sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED && i < 10)
       {
-        delay(500);
+        delay(1000);
         i++;
+        if (i == 10)
+        {
+          syncFailed = true;
+        }
       }
 
-      time_t tnow = time(nullptr);
-      struct tm *local = localtime(&tnow);
+      if (!syncFailed)
+      {
+        time_t tnow = time(nullptr);
+        struct tm *local = localtime(&tnow);
 
-      currentTime.Year = local->tm_year + 1900 - 18;
-      currentTime.Month = local->tm_mon + 1;
-      currentTime.Day = local->tm_mday;
-      currentTime.Hour = local->tm_hour;
-      currentTime.Minute = local->tm_min;
-      currentTime.Second = local->tm_sec;
-      currentTime.Wday = local->tm_wday + 1;
-      RTC.write(currentTime);
-      RTC.read(currentTime);
+        currentTime.Year = local->tm_year + 1900 - 18;
+        currentTime.Month = local->tm_mon + 1;
+        currentTime.Day = local->tm_mday;
+        currentTime.Hour = local->tm_hour;
+        currentTime.Minute = local->tm_min;
+        currentTime.Second = local->tm_sec;
+        currentTime.Wday = local->tm_wday + 1;
+        RTC.write(currentTime);
+        RTC.read(currentTime);
+      }
     }
   }
 
